@@ -1,0 +1,6 @@
+Processador,quantidade_ram,tipo_ram,sistema_operacional,ssd,id
+i3 7100,4GB,DDR4,10,False,1
+i3 4100,4GB,DDR3,8,False,2
+i3 8100,16GB,DDR4,11,True,3
+Ryzen 5 PRO 5650G,16GB,DDR4,11,True,4
+i3 4100,16GB,DDR3,8,False,5
