@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button.jsx'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.jsx'
@@ -22,6 +22,18 @@ function App() {
   const [editingItem, setEditingItem] = useState(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [dialogType, setDialogType] = useState('')
+
+    // 2. Estado para os filtros da tabela de patrimônios
+  const [filters, setFilters] = useState({
+    patrimonio: '',
+    responsavel: '',
+    gerencia: 'all',
+    modelo: 'all',
+    processador: '',
+    ram: '',
+    so: 'all',
+    ssd: 'all',
+  })
 
   // Estados para formulários
   const [patrimonioForm, setPatrimonioForm] = useState({
@@ -70,6 +82,39 @@ function App() {
       setLoading(false)
     }
   }
+
+  const uniqueOsOptions = useMemo(() => {
+    const osSet = new Set(patrimonios.map(p => p.modelo?.sistema_operacional).filter(Boolean));
+    return Array.from(osSet).sort((a, b) => b - a); // Ordena do mais novo para o mais antigo
+  }, [patrimonios]);
+
+    // 3. Função para atualizar o estado dos filtros
+  const handleFilterChange = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }))
+  }
+
+  // 4. Lógica para filtrar os patrimônios
+  const filteredPatrimonios = useMemo(() => {
+    return patrimonios.filter(p => {
+      const patrimonioMatch = p.patrimonio.toLowerCase().includes(filters.patrimonio.toLowerCase())
+      const responsavelMatch = p.nome_servidor_responsavel.toLowerCase().includes(filters.responsavel.toLowerCase())
+      const gerenciaMatch = filters.gerencia === 'all' || p.gerencia_id.toString() === filters.gerencia
+      const modeloMatch = filters.modelo === 'all' || p.modelo_id.toString() === filters.modelo
+      const processadorMatch = p.modelo?.processador.toLowerCase().includes(filters.processador.toLowerCase())
+      const ramMatch = `${p.modelo?.quantidade_ram} ${p.modelo?.tipo_ram}`.toLowerCase().includes(filters.ram.toLowerCase())
+      //const soMatch = `Windows ${p.modelo?.sistema_operacional}`.toLowerCase().includes(filters.so.toLowerCase())
+      const soMatch = filters.so === 'all' || p.modelo?.sistema_operacional === filters.so;
+      
+      let ssdMatch = true
+      if (filters.ssd === 'sim') {
+        ssdMatch = p.modelo?.ssd === true
+      } else if (filters.ssd === 'nao') {
+        ssdMatch = p.modelo?.ssd === false
+      }
+
+      return patrimonioMatch && responsavelMatch && gerenciaMatch && modeloMatch && processadorMatch && ramMatch && soMatch && ssdMatch
+    })
+  }, [patrimonios, filters])
 
   const openDialog = (type, item = null) => {
     setDialogType(type)
@@ -224,8 +269,9 @@ function App() {
                 <div className="flex justify-between items-center">
                   <div>
                     <CardTitle>Patrimônios</CardTitle>
+                    {/* 5. Contador dinâmico */}
                     <CardDescription>
-                      Lista completa dos computadores da empresa
+                      Exibindo {filteredPatrimonios.length} de {patrimonios.length} computadores.
                     </CardDescription>
                   </div>
                   <Button onClick={() => openDialog('patrimonio')}>
@@ -248,9 +294,57 @@ function App() {
                       <TableHead>SSD</TableHead>
                       <TableHead>Ações</TableHead>
                     </TableRow>
+                       {/* 6. Linha com os filtros */}
+                    <TableRow>
+                      <TableHead><Input placeholder="Filtrar..." value={filters.patrimonio} onChange={(e) => handleFilterChange('patrimonio', e.target.value)} /></TableHead>
+                      <TableHead><Input placeholder="Filtrar..." value={filters.responsavel} onChange={(e) => handleFilterChange('responsavel', e.target.value)} /></TableHead>
+                      <TableHead>
+                        <Select value={filters.gerencia} onValueChange={(value) => handleFilterChange('gerencia', value)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Todas</SelectItem>
+                            {gerencias.map(g => <SelectItem key={g.id} value={g.id.toString()}>{g.nome}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </TableHead>
+                      <TableHead>
+                        <Select value={filters.modelo} onValueChange={(value) => handleFilterChange('modelo', value)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Todos</SelectItem>
+                            {modelos.map(m => <SelectItem key={m.id} value={m.id.toString()}>{m.nome}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </TableHead>
+                      <TableHead><Input placeholder="Filtrar..." value={filters.processador} onChange={(e) => handleFilterChange('processador', e.target.value)} /></TableHead>
+                      <TableHead><Input placeholder="Filtrar..." value={filters.ram} onChange={(e) => handleFilterChange('ram', e.target.value)} /></TableHead>
+                       <TableHead>
+                        <Select value={filters.so} onValueChange={(value) => handleFilterChange('so', value)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Todos</SelectItem>
+                            {uniqueOsOptions.map(os => (
+                              <SelectItem key={os} value={os}>Windows {os}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableHead>
+                      <TableHead>
+                        <Select value={filters.ssd} onValueChange={(value) => handleFilterChange('ssd', value)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Todos</SelectItem>
+                            <SelectItem value="sim">Sim</SelectItem>
+                            <SelectItem value="nao">Não</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </TableHead>
+                      <TableHead></TableHead> {/* Célula vazia para coluna de ações */}
+                    </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {patrimonios.map((patrimonio) => (
+                    {/* 7. Mapear a lista filtrada */}
+                    {filteredPatrimonios.map((patrimonio) => (
                       <TableRow key={patrimonio.id}>
                         <TableCell className="font-medium">{patrimonio.patrimonio}</TableCell>
                         <TableCell>{patrimonio.nome_servidor_responsavel}</TableCell>

@@ -51,105 +51,11 @@ Este sistema foi desenvolvido para gerenciar o patrimônio de computadores da em
 
 ## Como Executar o Sistema
 
-### Pré-requisitos
-- Python 3.11+
-- Node.js 20+
-- pnpm
+1) Instalar o Docker
+## Comando com build
+2) docker-compose up -d --build
+## Comando sem build
+3) docker-compose up -d
+## Popular o Banco (Somente primeira vez)
+4) docker-compose exec backend python src/seed.py 
 
-### Backend (Flask)
-```bash
-cd gerenciamento-computadores
-source venv/bin/activate
-python src/main.py
-```
-O backend estará disponível em: http://localhost:5000
-
-### Frontend (React)
-```bash
-cd frontend-computadores
-pnpm run dev --host
-```
-O frontend estará disponível em: http://localhost:5173
-
-## API Endpoints
-
-### Patrimônios
-- `GET /api/patrimonios` - Listar todos os patrimônios
-- `POST /api/patrimonios` - Criar novo patrimônio
-- `PUT /api/patrimonios/{id}` - Atualizar patrimônio
-- `DELETE /api/patrimonios/{id}` - Excluir patrimônio
-
-### Modelos
-- `GET /api/modelos` - Listar todos os modelos
-- `POST /api/modelos` - Criar novo modelo
-- `PUT /api/modelos/{id}` - Atualizar modelo
-- `DELETE /api/modelos/{id}` - Excluir modelo
-
-### Gerências
-- `GET /api/gerencias` - Listar todas as gerências
-- `POST /api/gerencias` - Criar nova gerência
-- `PUT /api/gerencias/{id}` - Atualizar gerência
-- `DELETE /api/gerencias/{id}` - Excluir gerência
-
-## Dados Importados
-
-O sistema foi populado com todos os dados da planilha original:
-- **5 modelos** de computador únicos
-- **35 gerências** diferentes
-- **205 patrimônios** com seus respectivos responsáveis
-
-## Tecnologias Utilizadas
-
-### Backend
-- Flask (Framework web)
-- SQLAlchemy (ORM)
-- Flask-CORS (Cross-Origin Resource Sharing)
-- SQLite (Banco de dados)
-
-### Frontend
-- React (Framework JavaScript)
-- Tailwind CSS (Framework CSS)
-- shadcn/ui (Componentes UI)
-- Lucide React (Ícones)
-- Vite (Build tool)
-
-## Arquivos Importantes
-
-- `database_schema.sql` - Script SQL completo para criação e população do banco
-- `gerenciamento-computadores/` - Diretório do backend Flask
-- `frontend-computadores/` - Diretório do frontend React
-- `patrimonios.csv`, `modelos.csv`, `gerencias.csv` - Dados extraídos da planilha
-
-## Observações
-
-1. O sistema utiliza CORS para permitir comunicação entre frontend e backend
-2. O banco de dados é criado automaticamente na primeira execução
-3. Os dados são populados automaticamente se o banco estiver vazio
-4. A interface é responsiva e funciona em dispositivos móveis
-5. Validações impedem exclusão de modelos/gerências que possuem patrimônios associados
-
-## Windows
-
-## Back-end
-
-cd C:\Users\Rafael\Documents\sistema-gerenciamento-computadores\backend-gerenciamento-computadores
-
-# Criar ambiente virtual
-python -m venv venv
-
-# Ativar o ambiente virtual
-.\venv\Scripts\Activate.ps1
-
-# Iniciar o servidor Flask
-python src/main.py
-
-## Front-end
-
-cd C:\Users\Rafael\Documents\sistema-gerenciamento-computadores\frontend-gerenciamento-computadores
-
-# Instalar dependências
-npm install -g pnpm
-pnpm install
-
-# Iniciar o servidor de desenvolvimento
-pnpm run dev --host
