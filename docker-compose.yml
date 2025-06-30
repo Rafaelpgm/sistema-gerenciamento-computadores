@@ -2,44 +2,44 @@ version: '3.8'
 
 services:
   # Serviço do Banco de Dados PostgreSQL
-  # db:
-  #   image: postgres:15-alpine  # Usamos uma imagem oficial e leve do Postgres
-  #   container_name: postgres_db
-  #   environment:
-  #     # Essas variáveis são usadas pela imagem do Postgres para inicializar o banco
-  #     POSTGRES_USER: meu-usuario-postgres
-  #     POSTGRES_PASSWORD: minha-senha-super-forte
-  #     POSTGRES_DB: gerenciamento_computadores_db
-  #   ports:
-  #     # Mapeia a porta do Postgres para a sua máquina (ótimo para depuração com DBeaver, etc.)
-  #     - "5432:5432"
-  #   volumes:
-  #     # Este volume garante que os dados do seu banco de dados sobrevivam
-  #     - postgres-data:/var/lib/postgresql/data
+  db:
+    image: postgres:15-alpine  # Usamos uma imagem oficial e leve do Postgres
+    container_name: postgres_db
+    environment:
+      # Essas variáveis são usadas pela imagem do Postgres para inicializar o banco
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: SgcPgmBH2025
+      POSTGRES_DB: gerenciamento_computadores_db
+    ports:
+      # Mapeia a porta do Postgres para a sua máquina (ótimo para depuração com DBeaver, etc.)
+      - "5442:5432"
+    volumes:
+      # Este volume garante que os dados do seu banco de dados sobrevivam
+      - postgres-sgc-data:/var/lib/postgresql/data
 
   # Serviço do Backend
   backend:
+    container_name: sgc-backend
     build:
       context: ./backend-gerenciamento-computadores
-    image: suppregistry.azurecr.io/backend-gerenciamento-computadores:latest
     ports:
-      - "5000:5000"
+      - "5170:5000"
     volumes:
       - ./backend-gerenciamento-computadores:/app
     environment:
       # A melhor prática é passar a URL de conexão como uma variável de ambiente
-      DATABASE_URL: "postgresql://postgres:P0stgre4Pgm25@supp-postdb-hml.postgres.database.azure.com:5432/gerenciamento_computadores_db"
+      DATABASE_URL: "postgresql://postgres:SgcPgmBH2025@db:5432/gerenciamento_computadores_db"
       FLASK_ENV: development
       FLASK_APP: src/main.py
-    # depends_on:
-    #   # Garante que o contêiner 'db' seja iniciado ANTES do contêiner 'backend'
-    #   - db
+    depends_on:
+      # Garante que o contêiner 'db' seja iniciado ANTES do contêiner 'backend'
+      - db
 
   # Serviço do Frontend (sem alterações)
   frontend:
+    container_name: sgc-frontend
     build:
       context: ./frontend-gerenciamento-computadores
-    image: suppregistry.azurecr.io/frontend-gerenciamento-computadores:latest
     ports:
       - "5173:5173"
     volumes:
@@ -49,5 +49,5 @@ services:
       - backend
 
 # Declaração do volume nomeado que será usado pelo Postgres
-# volumes:
-#   postgres-data:
+volumes:
+  postgres-sgc-data:

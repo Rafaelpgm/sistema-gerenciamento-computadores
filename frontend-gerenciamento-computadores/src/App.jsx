@@ -17,7 +17,7 @@ import './App.css'
 // const API_BASE_URL = 'http://localhost:5000/api'
 
 // Depois:
-const API_BASE_URL = 'https://sgcbackend.pgmbh.org/api'
+const API_BASE_URL = 'http://191.232.244.118:5170/api'
 
     
 
