@@ -66,7 +66,5 @@ def wait_for_db():
 
 if __name__ == '__main__':
     wait_for_db()
-    with app.app_context():
-        # A única responsabilidade agora é garantir que as tabelas existam
-        db.create_all()
+    
     app.run(host='0.0.0.0', port=5000, debug=True)

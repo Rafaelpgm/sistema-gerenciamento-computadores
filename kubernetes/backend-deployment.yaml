@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: gen-computadores
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend
+        image: suppregistry.azurecr.io/backend-gerenciamento-computadores:latest
+        ports:
+        - containerPort: 5000
+        env:
+        - name: DATABASE_URL
+          value: "postgresql://postgres:P0stgre4Pgm25@supp-postdb-hml.postgres.database.azure.com:5432/gerenciamento_computadores_db"
+        - name: FLASK_ENV
+          value: "production"
+        - name: FLASK_APP
+          value: "src.main:app"

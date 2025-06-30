@@ -1,0 +1,93 @@
+# Backend Serviço Cluster
+apiVersion: v1
+kind: Service
+metadata:
+  name: sgc-backend-service-ingress
+  namespace: gen-computadores
+  labels:
+    app: backend
+spec:
+  ports:
+    - name: http
+      port: 80
+      targetPort: 5000
+      protocol: TCP
+  selector:
+    app: backend
+
+---
+# Frontend Serviço Cluster
+apiVersion: v1
+kind: Service
+metadata:
+  name: sgc-frontend-service-ingress
+  namespace: gen-computadores
+  labels:
+    app: frontend
+spec:
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      protocol: TCP
+  selector:
+    app: frontend
+
+---
+# Backend Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-sgc-backend
+  namespace: gen-computadores
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.org/client-max-body-size: "100m"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+spec:
+  tls:
+  - hosts:
+    - sgcbackend.pgmbh.org
+    secretName: supp-pgmbh-tls-secret
+  rules:
+  - host: sgcbackend.pgmbh.org
+    http:
+      paths:
+        - pathType: Prefix
+          path: "/"
+          backend:
+            service:
+              name: sgc-backend-service-ingress
+              port:
+                number: 80
+
+---
+# Frontend Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-sgc-frontend
+  namespace: gen-computadores
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: 'true'
+spec:
+  tls:
+  - hosts:
+    - sgc.pgmbh.org
+    secretName: supp-pgmbh-tls-secret
+  rules:
+  - host: sgc.pgmbh.org
+    http:
+      paths:
+        - pathType: Prefix
+          path: "/"
+          backend:
+            service:
+              name: sgc-frontend-service-ingress
+              port:
+                number: 80

@@ -8,11 +8,16 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Install PostgreSQL client
+RUN apt-get update && apt-get install -y postgresql-client && rm -rf /var/lib/apt/lists/*
+
 # 4. Copiar o restante do código da aplicação
 COPY . .
+COPY database_schema.sql .
+RUN chmod +x entrypoint.sh
 
-# 5. Expor a porta que o Flask usa (padrão é 5000)
+# 5. Expor a porta que o Gunicorn usará
 EXPOSE 5000
 
-# 6. Comando para iniciar a aplicação
-CMD ["python", "src/main.py"]
+# 6. Comando para iniciar a aplicação com Gunicorn
+ENTRYPOINT ["./entrypoint.sh"]

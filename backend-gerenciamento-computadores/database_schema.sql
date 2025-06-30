@@ -2,24 +2,29 @@
 -- Criado para a empresa com base na planilha LevantamentoGeralMáquinasPGM.xlsx
 
 -- Criação da tabela Modelo do Computador
+DROP TABLE IF EXISTS patrimonio CASCADE;
+DROP TABLE IF EXISTS gerencia CASCADE;
+DROP TABLE IF EXISTS modelo_computador CASCADE;
+
 CREATE TABLE modelo_computador (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    processador TEXT NOT NULL,
-    quantidade_ram TEXT NOT NULL,
-    tipo_ram TEXT NOT NULL,
-    sistema_operacional TEXT NOT NULL,
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL, -- <-- ADICIONE ESTA LINHA!
+    processador VARCHAR(255) NOT NULL,
+    quantidade_ram VARCHAR(255) NOT NULL,
+    tipo_ram VARCHAR(255) NOT NULL,
+    sistema_operacional VARCHAR(255) NOT NULL,
     ssd BOOLEAN NOT NULL
 );
 
 -- Criação da tabela Gerência
 CREATE TABLE gerencia (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     nome TEXT NOT NULL UNIQUE
 );
 
 -- Criação da tabela Patrimônio
 CREATE TABLE patrimonio (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     patrimonio TEXT NOT NULL UNIQUE,
     nome_servidor_responsavel TEXT NOT NULL,
     modelo_id INTEGER NOT NULL,
@@ -29,12 +34,12 @@ CREATE TABLE patrimonio (
 );
 
 -- Inserção dos dados na tabela modelo_computador
-INSERT INTO modelo_computador (id, processador, quantidade_ram, tipo_ram, sistema_operacional, ssd) VALUES
-(1, 'i3 7100', '4GB', 'DDR4', '10', 0),
-(2, 'i3 4100', '4GB', 'DDR3', '8', 0),
-(3, 'i3 8100', '16GB', 'DDR4', '11', 1),
-(4, 'Ryzen 5 PRO 5650G', '16GB', 'DDR4', '11', 1),
-(5, 'i3 4100', '16GB', 'DDR3', '8', 0);
+INSERT INTO modelo_computador (id, nome, processador, quantidade_ram, tipo_ram, sistema_operacional, ssd) VALUES
+(1, 'Arquimedes H110', 'i3 7100', '4GB', 'DDR4', '10', FALSE),
+(2, 'Daten ou Positivo Antigo', 'i3 4100', '4GB', 'DDR3', '8', FALSE),
+(3, 'Positivo D6200', 'i3 8100', '16GB', 'DDR4', '11', TRUE),
+(4, 'Lenovo M75s', 'Ryzen 5 PRO 5650G', '16GB', 'DDR4', '11', TRUE),
+(5, 'Positivo Antigo modificado', 'i3 4100', '16GB', 'DDR3', '8', FALSE);
 
 -- Inserção dos dados na tabela gerencia
 INSERT INTO gerencia (id, nome) VALUES

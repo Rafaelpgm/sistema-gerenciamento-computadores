@@ -12,7 +12,14 @@ import { Badge } from '@/components/ui/badge.jsx'
 import { Computer, Building, Settings, Plus, Edit, Trash2, Monitor } from 'lucide-react'
 import './App.css'
 
-const API_BASE_URL = 'http://localhost:5000/api'
+      
+// Antes:
+// const API_BASE_URL = 'http://localhost:5000/api'
+
+// Depois:
+const API_BASE_URL = 'https://sgcbackend.pgmbh.org/api'
+
+    
 
 function App() {
   const [patrimonios, setPatrimonios] = useState([])

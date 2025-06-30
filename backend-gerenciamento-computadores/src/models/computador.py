@@ -22,7 +22,7 @@ class ModeloComputador(db.Model):
     def to_dict(self):
         return {
             'id': self.id,
-            'nome': self.nome,  # <-- LINHA ADICIONADA
+            'nome': self.nome, # <-- A LINHA QUE FALTAVA!
             'processador': self.processador,
             'quantidade_ram': self.quantidade_ram,
             'tipo_ram': self.tipo_ram,
