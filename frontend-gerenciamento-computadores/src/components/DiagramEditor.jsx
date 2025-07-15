@@ -10,7 +10,7 @@ import {
   Panel,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Monitor, Save, RotateCcw, Grid3x3, Type, Minus, Edit, Trash2 } from 'lucide-react';
+import { Monitor, Save, RotateCcw, Grid3x3, Type, Minus, Edit, Trash2, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
@@ -111,12 +111,14 @@ const TextNode = ({ data, selected, onResizeStart, onResizeEnd }) => {
         />
       ) : (
         <div 
-          className="drag-handle text-sm font-medium bg-white px-2 py-1 rounded shadow-sm border w-full h-full overflow-hidden cursor-move"
+          className="drag-handle text-sm font-medium bg-white px-2 py-1 rounded shadow-sm border w-full h-full overflow-hidden cursor-move flex items-center"
           onDoubleClick={handleDoubleClick}
           style={{ 
             fontSize: `${data.fontSize || 14}px`,
             color: data.color || '#000000',
-            fontWeight: data.fontWeight || 'normal'
+            fontWeight: data.fontWeight || 'normal',
+            textAlign: data.textAlign || 'left',
+            justifyContent: data.textAlign === 'center' ? 'center' : data.textAlign === 'right' ? 'flex-end' : 'flex-start'
           }}
         >
           {data.text || 'Texto'}
@@ -322,6 +324,7 @@ const DiagramEditor = ({
         fontSize: 14,
         color: '#000000',
         fontWeight: 'normal',
+        textAlign: 'left',
         width: 150,
         height: 40,
         onUpdate: (updatedData) => {
@@ -361,6 +364,18 @@ const DiagramEditor = ({
       setSelectedNode(null);
     }
   }, [selectedNode, setNodes]);
+
+  // Listener para tecla DEL
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Delete' && selectedNode && selectedNode.type !== 'computer') {
+        deleteSelectedNode();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selectedNode, deleteSelectedNode]);
 
   // Callback para clique no canvas
   const onPaneClick = useCallback((event) => {
@@ -666,6 +681,44 @@ const DiagramEditor = ({
                       className="w-8 h-6 border rounded"
                     />
                   </div>
+                  <div className="space-y-1">
+                    <label className="text-xs">Alinhamento:</label>
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant={selectedNode.data.textAlign === 'left' ? 'default' : 'outline'}
+                        onClick={() => {
+                          selectedNode.data.textAlign = 'left';
+                          selectedNode.data.onUpdate?.(selectedNode.data);
+                        }}
+                        className="p-1 h-6"
+                      >
+                        <AlignLeft className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={selectedNode.data.textAlign === 'center' ? 'default' : 'outline'}
+                        onClick={() => {
+                          selectedNode.data.textAlign = 'center';
+                          selectedNode.data.onUpdate?.(selectedNode.data);
+                        }}
+                        className="p-1 h-6"
+                      >
+                        <AlignCenter className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={selectedNode.data.textAlign === 'right' ? 'default' : 'outline'}
+                        onClick={() => {
+                          selectedNode.data.textAlign = 'right';
+                          selectedNode.data.onUpdate?.(selectedNode.data);
+                        }}
+                        className="p-1 h-6"
+                      >
+                        <AlignRight className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               )}
               
@@ -732,16 +785,19 @@ const DiagramEditor = ({
                 </div>
               )}
               
-              <div className="flex gap-2">
+              <div className="space-y-1">
                 <Button
                   onClick={deleteSelectedNode}
                   size="sm"
                   variant="destructive"
-                  className="text-xs"
+                  className="text-xs w-full"
                 >
                   <Trash2 className="h-3 w-3 mr-1" />
                   Deletar
                 </Button>
+                <div className="text-xs text-gray-500 text-center">
+                  ou pressione <kbd className="px-1 py-0.5 bg-gray-100 border rounded">DEL</kbd>
+                </div>
               </div>
             </div>
           )}
