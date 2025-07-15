@@ -42,8 +42,9 @@ CREATE TABLE layout (
     id SERIAL PRIMARY KEY,
     gerencia_id INTEGER NOT NULL UNIQUE,
     layout_data TEXT NOT NULL,
-    grid_cols INTEGER NOT NULL DEFAULT 4,
-    grid_rows INTEGER NOT NULL DEFAULT 4,
+    is_diagram BOOLEAN DEFAULT FALSE,
+    grid_cols INTEGER DEFAULT 4,
+    grid_rows INTEGER DEFAULT 4,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (gerencia_id) REFERENCES gerencia(id) ON DELETE CASCADE

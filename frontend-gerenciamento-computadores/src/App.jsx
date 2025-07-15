@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox.jsx'
 import { Badge } from '@/components/ui/badge.jsx'
 import { Computer, Building, Settings, Plus, Edit, Trash2, Monitor, ArrowUpDown, ArrowUp, ArrowDown, Layout, Users, Save } from 'lucide-react'
+import DiagramEditor from '@/components/DiagramEditor.jsx'
 import './App.css'
 
       
@@ -930,18 +931,17 @@ function App() {
     }))
   }
 
-  const saveLayout = async () => {
+  const saveLayout = async (diagramLayoutData = null) => {
     if (!selectedGerencia) return
 
     try {
-      const currentGrid = gridConfigs[selectedGerencia] || getGridDimensions(getComputersForGerencia(selectedGerencia).length, selectedGerencia)
-      const currentLayout = layouts[selectedGerencia] || {}
+      // Se recebeu dados do diagrama, usar eles; senão usar o layout de grid atual
+      const currentLayout = diagramLayoutData || layouts[selectedGerencia] || {}
       
       console.log('Salvando layout:', {
         gerencia_id: selectedGerencia,
         layout_data: currentLayout,
-        grid_cols: currentGrid.cols,
-        grid_rows: currentGrid.rows
+        is_diagram: !!diagramLayoutData
       })
       
       const response = await fetch(`${API_BASE_URL}/layouts/${selectedGerencia}`, {
@@ -951,8 +951,7 @@ function App() {
         },
         body: JSON.stringify({
           layout_data: currentLayout,
-          grid_cols: currentGrid.cols,
-          grid_rows: currentGrid.rows
+          is_diagram: !!diagramLayoutData
         })
       })
 
@@ -983,11 +982,6 @@ function App() {
       setOriginalLayouts(prev => ({
         ...prev,
         [selectedGerencia]: { ...currentLayout }
-      }))
-      
-      setOriginalGridConfigs(prev => ({
-        ...prev,
-        [selectedGerencia]: { ...currentGrid }
       }))
       
       alert('Layout salvo com sucesso!')
@@ -1537,9 +1531,9 @@ function App() {
               <CardHeader>
                 <div className="flex justify-between items-center">
                   <div>
-                    <CardTitle>Layout Visual das Gerências</CardTitle>
+                    <CardTitle>Editor de Diagrama</CardTitle>
                     <CardDescription>
-                      Organize visualmente os computadores por gerência
+                      Crie diagramas personalizados posicionando computadores livremente
                     </CardDescription>
                   </div>
                   <div className="flex gap-2">
@@ -1553,236 +1547,20 @@ function App() {
                         ))}
                       </SelectContent>
                     </Select>
-                    
-                    {selectedGerencia && (
-                      <div className="flex items-center gap-2">
-                        <Label className="text-sm font-medium">Grid:</Label>
-                        <Input
-                          type="number"
-                          min="1"
-                          max="20"
-                          value={(() => {
-                            const currentGrid = getGridDimensions(getComputersForGerencia(selectedGerencia).length, selectedGerencia)
-                            return currentGrid.cols
-                          })()}
-                          onChange={(e) => {
-                            const cols = Math.max(1, Math.min(20, parseInt(e.target.value) || 1))
-                            setGridConfigs(prev => ({
-                              ...prev,
-                              [selectedGerencia]: { 
-                                ...prev[selectedGerencia], 
-                                cols 
-                              }
-                            }))
-                          }}
-                          className="w-16"
-                          placeholder="Col"
-                        />
-                        <span className="text-sm text-gray-500">x</span>
-                        <Input
-                          type="number"
-                          min="1"
-                          max="20"
-                          value={(() => {
-                            const currentGrid = getGridDimensions(getComputersForGerencia(selectedGerencia).length, selectedGerencia)
-                            return currentGrid.rows
-                          })()}
-                          onChange={(e) => {
-                            const rows = Math.max(1, Math.min(20, parseInt(e.target.value) || 1))
-                            setGridConfigs(prev => ({
-                              ...prev,
-                              [selectedGerencia]: { 
-                                ...prev[selectedGerencia], 
-                                rows 
-                              }
-                            }))
-                          }}
-                          className="w-16"
-                          placeholder="Row"
-                        />
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            const computersCount = getComputersForGerencia(selectedGerencia).length
-                            const options = generateGridOptions(computersCount)
-                            const defaultOption = options[0] || { cols: 4, rows: 4 }
-                            setGridConfigs(prev => ({
-                              ...prev,
-                              [selectedGerencia]: defaultOption
-                            }))
-                          }}
-                        >
-                          Auto
-                        </Button>
-                      </div>
-                    )}
-                    
-                    <div className="flex gap-2">
-                      <Button 
-                        onClick={() => saveLayout()} 
-                        disabled={!selectedGerencia}
-                        variant={hasUnsavedChanges(selectedGerencia) ? "default" : "outline"}
-                      >
-                        <Save className="h-4 w-4 mr-2" />
-                        {hasUnsavedChanges(selectedGerencia) ? 'Salvar Alterações*' : 'Salvar Layout'}
-                      </Button>
-                      
-                      <Button 
-                        variant="outline" 
-                        onClick={() => cancelChanges()} 
-                        disabled={!selectedGerencia || !hasUnsavedChanges(selectedGerencia)}
-                      >
-                        Cancelar
-                      </Button>
-                      
-                      <Button 
-                        variant="destructive" 
-                        onClick={() => resetLayout()} 
-                        disabled={!selectedGerencia}
-                      >
-                        Resetar Layout
-                      </Button>
-                    </div>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
                 {selectedGerencia ? (
-                  <div className="grid grid-cols-12 gap-4">
-                    {/* Painel lateral com computadores disponíveis */}
-                    <div 
-                      className="col-span-3 bg-gray-50 p-4 rounded-lg border-2 border-dashed border-transparent hover:border-blue-300 transition-colors"
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={(e) => handleDropOnPanel(e)}
-                      onDragEnter={(e) => {
-                        e.preventDefault()
-                        e.currentTarget.classList.add('border-blue-400', 'bg-blue-50')
-                      }}
-                      onDragLeave={(e) => {
-                        e.preventDefault()
-                        e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50')
-                      }}
-                    >
-                      <h3 className="font-semibold mb-3 flex items-center gap-2">
-                        <Users className="h-4 w-4" />
-                        Computadores Disponíveis
-                        <span className="text-xs text-gray-500 font-normal">
-                          (arraste aqui para remover do layout)
-                        </span>
-                        {(() => {
-                          // Verificar se há computadores órfãos no layout
-                          const currentLayout = layouts[selectedGerencia] || {}
-                          const layoutComputerIds = Object.values(currentLayout)
-                          const validComputerIds = getComputersForGerencia(selectedGerencia).map(p => p.id)
-                          const orphanedComputers = layoutComputerIds.filter(id => !validComputerIds.includes(id))
-                          
-                          if (orphanedComputers.length > 0) {
-                            return (
-                              <span className="text-xs text-orange-600 font-normal ml-2">
-                                ⚠️ {orphanedComputers.length} computador(es) inválido(s) removido(s)
-                              </span>
-                            )
-                          }
-                          return null
-                        })()}
-                      </h3>
-                      <div className="space-y-2 min-h-[200px]">
-                        {(() => {
-                          const availableComputers = getComputersForGerencia(selectedGerencia)
-                            .filter(p => !isComputerInLayout(p.id))
-                          
-                          if (availableComputers.length === 0) {
-                            return (
-                              <div className="flex items-center justify-center h-32 text-gray-400 text-sm">
-                                <div className="text-center">
-                                  <Monitor className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                                  <p>Todos os computadores estão no layout</p>
-                                  <p className="text-xs">Arraste aqui para remover do grid</p>
-                                </div>
-                              </div>
-                            )
-                          }
-                          
-                          return availableComputers.map(p => (
-                            <div
-                              key={p.id}
-                              draggable
-                              onDragStart={() => setDraggedComputer(p)}
-                              onDragEnd={() => setDraggedComputer(null)}
-                              className="bg-white p-3 rounded cursor-move hover:shadow-md transition-shadow border border-gray-200"
-                            >
-                              <div className="font-medium text-sm">{formatPatrimonioJSX(p.patrimonio)}</div>
-                              <div className="text-xs text-gray-600">{p.nome_servidor_responsavel}</div>
-                              <div className="text-xs text-gray-500">{p.modelo?.nome}</div>
-                            </div>
-                          ))
-                        })()}
-                      </div>
-                    </div>
-
-                    {/* Área de layout principal */}
-                    <div 
-                      className="col-span-9 bg-gray-100 p-6 rounded-lg min-h-[600px] relative"
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={(e) => handleDropOnLayout(e)}
-                    >
-                      <div className="absolute inset-0 p-6">
-                        {(() => {
-                          const computersInGerencia = getComputersForGerencia(selectedGerencia)
-                          const { cols, rows } = getGridDimensions(computersInGerencia.length, selectedGerencia)
-                          const totalSlots = cols * rows
-                          
-                          return (
-                            <div className="h-full flex flex-col">
-                              <div className="mb-4 text-sm text-gray-600 flex justify-between items-center">
-                                <span>
-                                  Layout: {cols} x {rows} = {totalSlots} slots | {computersInGerencia.length} computadores
-                                </span>
-                                <span className="text-xs">
-                                  {totalSlots - computersInGerencia.length > 0 && 
-                                    `${totalSlots - computersInGerencia.length} slots vazios`
-                                  }
-                                </span>
-                              </div>
-                              {/* Grid de posições dinâmico */}
-                              <div 
-                                className="grid gap-4 h-full"
-                                style={{ 
-                                  gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-                                  gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`
-                                }}
-                              >
-                                {Array.from({ length: totalSlots }).map((_, index) => (
-                                  <div
-                                    key={index}
-                                    className="border-2 border-dashed border-gray-300 rounded-lg p-2 flex items-center justify-center hover:border-gray-400 transition-colors min-h-[120px]"
-                                    onDragOver={(e) => e.preventDefault()}
-                                    onDrop={(e) => handleDropOnPosition(e, index)}
-                                  >
-                                    {getComputerAtPosition(index) ? (
-                                      <div
-                                        draggable
-                                        onDragStart={() => setDraggedComputer(getComputerAtPosition(index))}
-                                        onContextMenu={(e) => handleRightClick(e, getComputerAtPosition(index))}
-                                        className="bg-blue-100 p-2 rounded cursor-move w-full h-full flex flex-col justify-center items-center text-center hover:bg-blue-200 transition-colors"
-                                      >
-                                        <Monitor className="h-6 w-6 mb-1 text-blue-600" />
-                                        <div className="text-xs font-medium">{formatPatrimonioJSX(getComputerAtPosition(index).patrimonio)}</div>
-                                        <div className="text-xs text-gray-600 truncate w-full">{getComputerAtPosition(index).nome_servidor_responsavel}</div>
-                                      </div>
-                                    ) : (
-                                      <div className="text-gray-400 text-xs">Vazio</div>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )
-                        })()}
-                      </div>
-                    </div>
-                  </div>
+                  <DiagramEditor
+                    computers={patrimonios}
+                    selectedGerencia={selectedGerencia}
+                    layouts={layouts}
+                    onSaveLayout={saveLayout}
+                    hasUnsavedChanges={hasUnsavedChanges(selectedGerencia)}
+                    onCancelChanges={cancelChanges}
+                    onResetLayout={resetLayout}
+                  />
                 ) : (
                   <div className="text-center py-12 text-gray-500">
                     Selecione uma gerência para visualizar e editar o layout

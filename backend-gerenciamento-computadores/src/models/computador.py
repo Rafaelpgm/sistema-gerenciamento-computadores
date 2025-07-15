@@ -77,8 +77,9 @@ class Layout(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     gerencia_id = db.Column(db.Integer, db.ForeignKey('gerencia.id'), nullable=False, unique=True)
     layout_data = db.Column(db.Text, nullable=False)  # JSON string com as posições
-    grid_cols = db.Column(db.Integer, nullable=False, default=4)  # Número de colunas do grid
-    grid_rows = db.Column(db.Integer, nullable=False, default=4)  # Número de linhas do grid
+    is_diagram = db.Column(db.Boolean, default=False)  # True se é diagrama livre, False se é grid
+    grid_cols = db.Column(db.Integer, nullable=True, default=4)  # Número de colunas do grid (só para grid)
+    grid_rows = db.Column(db.Integer, nullable=True, default=4)  # Número de linhas do grid (só para grid)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
 
@@ -101,6 +102,7 @@ class Layout(db.Model):
             'id': self.id,
             'gerencia_id': self.gerencia_id,
             'layout_data': layout_data,
+            'is_diagram': self.is_diagram or False,
             'grid_cols': self.grid_cols or 4,
             'grid_rows': self.grid_rows or 4,
             'created_at': self.created_at.isoformat() if self.created_at else None,

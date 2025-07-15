@@ -231,6 +231,7 @@ def get_layout_by_gerencia(gerencia_id):
         # Retorna layout vazio com estrutura completa
         return jsonify({
             'layout_data': {},
+            'is_diagram': False,
             'grid_cols': 4,
             'grid_rows': 4
         }), 200
@@ -248,6 +249,7 @@ def create_layout():
     layout = Layout(
         gerencia_id=data['gerencia_id'],
         layout_data=json.dumps(data['layout_data']),
+        is_diagram=data.get('is_diagram', False),
         grid_cols=data.get('grid_cols', 4),
         grid_rows=data.get('grid_rows', 4)
     )
@@ -268,8 +270,9 @@ def update_layout(gerencia_id):
         
         # Validar dados de entrada
         layout_data = data.get('layout_data', {})
-        grid_cols = max(1, min(20, data.get('grid_cols', 4)))  # Entre 1 e 20
-        grid_rows = max(1, min(20, data.get('grid_rows', 4)))  # Entre 1 e 20
+        is_diagram = data.get('is_diagram', False)
+        grid_cols = max(1, min(20, data.get('grid_cols', 4))) if not is_diagram else None
+        grid_rows = max(1, min(20, data.get('grid_rows', 4))) if not is_diagram else None
         
         # Garantir que layout_data seja serializável
         try:
@@ -282,6 +285,7 @@ def update_layout(gerencia_id):
         if layout:
             # Atualizar layout existente
             layout.layout_data = layout_json
+            layout.is_diagram = is_diagram
             layout.grid_cols = grid_cols
             layout.grid_rows = grid_rows
             db.session.commit()
@@ -291,6 +295,7 @@ def update_layout(gerencia_id):
             new_layout = Layout(
                 gerencia_id=gerencia_id,
                 layout_data=layout_json,
+                is_diagram=is_diagram,
                 grid_cols=grid_cols,
                 grid_rows=grid_rows
             )
