@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
-from src.models.computador import db, ModeloComputador, Gerencia, Patrimonio
+from src.models.computador import db, ModeloComputador, Gerencia, Patrimonio, Layout, BaixaPatrimonial
+import json
 
 computador_bp = Blueprint('computador', __name__)
 
@@ -137,7 +138,179 @@ def update_patrimonio(patrimonio_id):
 def delete_patrimonio(patrimonio_id):
     patrimonio = Patrimonio.query.get_or_404(patrimonio_id)
     
+    # Criar registro na tabela baixa_patrimonial mantendo a gerência
+    baixa = BaixaPatrimonial(
+        patrimonio=patrimonio.patrimonio,
+        nome_servidor_responsavel=patrimonio.nome_servidor_responsavel,
+        modelo_id=patrimonio.modelo_id,
+        gerencia_id=patrimonio.gerencia_id,  # Manter a gerência original
+        motivo_baixa='Excluído via sistema'
+    )
+    
+    db.session.add(baixa)
     db.session.delete(patrimonio)
+    db.session.commit()
+    
+    return '', 204
+
+# Rotas para Baixa Patrimonial
+@computador_bp.route('/baixa-patrimonial', methods=['GET'])
+def get_baixa_patrimonial():
+    """Retorna todos os patrimônios baixados"""
+    try:
+        baixas = BaixaPatrimonial.query.all()
+        return jsonify([baixa.to_dict() for baixa in baixas])
+    except Exception as e:
+        return jsonify({'error': f'Erro ao buscar baixa patrimonial: {str(e)}'}), 500
+
+@computador_bp.route('/baixa-patrimonial/<int:baixa_id>/restaurar', methods=['POST'])
+def restaurar_patrimonio(baixa_id):
+    """Restaura um patrimônio da baixa patrimonial"""
+    try:
+        # Verificar se o registro da baixa ainda existe
+        baixa = BaixaPatrimonial.query.get(baixa_id)
+        if not baixa:
+            return jsonify({'error': 'Patrimônio não encontrado na baixa patrimonial'}), 404
+        
+        # Verificar se o número de patrimônio não existe na tabela ativa
+        existing_patrimonio = Patrimonio.query.filter_by(patrimonio=baixa.patrimonio).first()
+        if existing_patrimonio:
+            return jsonify({'error': 'Patrimônio já existe na tabela ativa. Não é possível restaurar.'}), 400
+        
+        # Criar novo registro na tabela patrimonio com a gerência original
+        patrimonio_restaurado = Patrimonio(
+            patrimonio=baixa.patrimonio,
+            nome_servidor_responsavel=baixa.nome_servidor_responsavel,
+            modelo_id=baixa.modelo_id,
+            gerencia_id=baixa.gerencia_id  # Manter a gerência original
+        )
+        
+        # Executar em uma transação
+        db.session.add(patrimonio_restaurado)
+        db.session.delete(baixa)
+        db.session.flush()  # Força a execução antes do commit
+        db.session.commit()
+        
+        return jsonify(patrimonio_restaurado.to_dict()), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        error_msg = str(e)
+        
+        if 'duplicate key value violates unique constraint' in error_msg:
+            return jsonify({'error': 'Patrimônio já existe na tabela ativa. Verifique se não foi restaurado anteriormente.'}), 400
+        elif 'UniqueViolation' in error_msg:
+            return jsonify({'error': 'Conflito de dados. O patrimônio pode já ter sido restaurado.'}), 400
+        else:
+            return jsonify({'error': f'Erro interno: {error_msg}'}), 500
+
+@computador_bp.route('/baixa-patrimonial/<int:baixa_id>', methods=['DELETE'])
+def delete_baixa_patrimonial(baixa_id):
+    """Remove permanentemente um patrimônio da baixa patrimonial"""
+    baixa = BaixaPatrimonial.query.get_or_404(baixa_id)
+    
+    db.session.delete(baixa)
+    db.session.commit()
+    
+    return '', 204
+
+# Rotas para Layout
+@computador_bp.route('/layouts', methods=['GET'])
+def get_layouts():
+    """Retorna todos os layouts"""
+    layouts = Layout.query.all()
+    return jsonify([layout.to_dict() for layout in layouts])
+
+@computador_bp.route('/layouts/<int:gerencia_id>', methods=['GET'])
+def get_layout_by_gerencia(gerencia_id):
+    """Retorna o layout de uma gerência específica"""
+    layout = Layout.query.filter_by(gerencia_id=gerencia_id).first()
+    if layout:
+        return jsonify(layout.to_dict())
+    else:
+        # Retorna layout vazio com estrutura completa
+        return jsonify({
+            'layout_data': {},
+            'grid_cols': 4,
+            'grid_rows': 4
+        }), 200
+
+@computador_bp.route('/layouts', methods=['POST'])
+def create_layout():
+    """Cria um novo layout para uma gerência"""
+    data = request.get_json()
+    
+    # Verificar se já existe layout para esta gerência
+    existing_layout = Layout.query.filter_by(gerencia_id=data['gerencia_id']).first()
+    if existing_layout:
+        return jsonify({'error': 'Layout já existe para esta gerência. Use PUT para atualizar.'}), 400
+    
+    layout = Layout(
+        gerencia_id=data['gerencia_id'],
+        layout_data=json.dumps(data['layout_data']),
+        grid_cols=data.get('grid_cols', 4),
+        grid_rows=data.get('grid_rows', 4)
+    )
+    
+    db.session.add(layout)
+    db.session.commit()
+    
+    return jsonify(layout.to_dict()), 201
+
+@computador_bp.route('/layouts/<int:gerencia_id>', methods=['PUT'])
+def update_layout(gerencia_id):
+    """Atualiza ou cria um layout para uma gerência"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'error': 'Dados JSON não fornecidos'}), 400
+        
+        # Validar dados de entrada
+        layout_data = data.get('layout_data', {})
+        grid_cols = max(1, min(20, data.get('grid_cols', 4)))  # Entre 1 e 20
+        grid_rows = max(1, min(20, data.get('grid_rows', 4)))  # Entre 1 e 20
+        
+        # Garantir que layout_data seja serializável
+        try:
+            layout_json = json.dumps(layout_data)
+        except (TypeError, ValueError) as e:
+            return jsonify({'error': f'Dados de layout inválidos: {str(e)}'}), 400
+        
+        layout = Layout.query.filter_by(gerencia_id=gerencia_id).first()
+        
+        if layout:
+            # Atualizar layout existente
+            layout.layout_data = layout_json
+            layout.grid_cols = grid_cols
+            layout.grid_rows = grid_rows
+            db.session.commit()
+            return jsonify(layout.to_dict())
+        else:
+            # Criar novo layout
+            new_layout = Layout(
+                gerencia_id=gerencia_id,
+                layout_data=layout_json,
+                grid_cols=grid_cols,
+                grid_rows=grid_rows
+            )
+            db.session.add(new_layout)
+            db.session.commit()
+            return jsonify(new_layout.to_dict()), 201
+            
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Erro interno do servidor: {str(e)}'}), 500
+
+@computador_bp.route('/layouts/<int:gerencia_id>', methods=['DELETE'])
+def delete_layout(gerencia_id):
+    """Remove o layout de uma gerência"""
+    layout = Layout.query.filter_by(gerencia_id=gerencia_id).first()
+    
+    if not layout:
+        return jsonify({'error': 'Layout não encontrado'}), 404
+    
+    db.session.delete(layout)
     db.session.commit()
     
     return '', 204
