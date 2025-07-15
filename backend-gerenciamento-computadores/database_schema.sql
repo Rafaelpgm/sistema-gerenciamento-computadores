@@ -7,6 +7,7 @@ DROP TABLE IF EXISTS patrimonio CASCADE;
 DROP TABLE IF EXISTS gerencia CASCADE;
 DROP TABLE IF EXISTS modelo_computador CASCADE;
 DROP TABLE IF EXISTS baixa_patrimonial CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
 
 -- Criação da tabela Modelo do Computador
 CREATE TABLE modelo_computador (
@@ -61,6 +62,15 @@ CREATE TABLE baixa_patrimonial (
     motivo_baixa TEXT,
     FOREIGN KEY (modelo_id) REFERENCES modelo_computador(id),
     FOREIGN KEY (gerencia_id) REFERENCES gerencia(id)
+);
+
+-- Criação da tabela Users
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(80) UNIQUE NOT NULL,
+    password_hash VARCHAR(128) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    active BOOLEAN DEFAULT TRUE
 );
 
 -- Inserção dos dados na tabela modelo_computador (extraídos do CSV)
@@ -320,5 +330,6 @@ SELECT setval('modelo_computador_id_seq', (SELECT MAX(id) FROM modelo_computador
 SELECT setval('gerencia_id_seq', (SELECT MAX(id) FROM gerencia));
 SELECT setval('baixa_patrimonial_id_seq', (SELECT MAX(id) FROM baixa_patrimonial));
 SELECT setval('layout_id_seq', (SELECT MAX(id) FROM layout));
+SELECT setval('users_id_seq', (SELECT MAX(id) FROM users));
 
 -- Fim do script

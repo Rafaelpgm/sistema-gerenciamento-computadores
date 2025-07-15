@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox.jsx'
 import { Badge } from '@/components/ui/badge.jsx'
 import { Computer, Building, Settings, Plus, Edit, Trash2, Monitor, ArrowUpDown, ArrowUp, ArrowDown, Layout, Users, Save } from 'lucide-react'
 import DiagramEditor from '@/components/DiagramEditor.jsx'
+import Login from '@/components/Login.jsx'
 import './App.css'
 
       
@@ -51,6 +52,7 @@ const formatPatrimonioJSX = (patrimonio) => {
     
 
 function App() {
+  const [user, setUser] = useState(null)
   const [patrimonios, setPatrimonios] = useState([])
   const [modelos, setModelos] = useState([])
   const [gerencias, setGerencias] = useState([])
@@ -148,9 +150,24 @@ function App() {
   })
 
   useEffect(() => {
-    fetchData()
-    // Testar se API está funcionando
-    testAPIConnection()
+    // Verificar se há token válido no localStorage
+    const token = localStorage.getItem('authToken')
+    const userData = localStorage.getItem('user')
+    
+    if (token && userData) {
+      try {
+        const parsedUser = JSON.parse(userData)
+        setUser(parsedUser)
+        fetchData()
+        testAPIConnection()
+      } catch (error) {
+        console.error('Erro ao parsing dos dados do usuário:', error)
+        localStorage.removeItem('authToken')
+        localStorage.removeItem('user')
+      }
+    } else {
+      setLoading(false)
+    }
   }, [])
 
   const testAPIConnection = async () => {
@@ -1223,15 +1240,42 @@ function App() {
     )
   }
 
+  const handleLogin = (userData) => {
+    setUser(userData)
+    fetchData()
+    testAPIConnection()
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem('authToken')
+    localStorage.removeItem('user')
+    setUser(null)
+  }
+
+  // Se não há usuário logado, mostrar tela de login
+  if (!user) {
+    return <Login onLogin={handleLogin} />
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="w-full mx-auto px-4">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <Computer className="h-8 w-8" />
-            Sistema de Gerenciamento de Computadores
-          </h1>
-          <p className="text-gray-600 mt-2">Gerencie o patrimônio de computadores da empresa</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+                <Computer className="h-8 w-8" />
+                Sistema de Gerenciamento de Computadores
+              </h1>
+              <p className="text-gray-600 mt-2">Gerencie o patrimônio de computadores da empresa</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-600">Olá, {user.username}!</span>
+              <Button onClick={handleLogout} variant="outline" size="sm">
+                Sair
+              </Button>
+            </div>
+          </div>
         </div>
 
         <Tabs defaultValue="patrimonios" className="space-y-4">

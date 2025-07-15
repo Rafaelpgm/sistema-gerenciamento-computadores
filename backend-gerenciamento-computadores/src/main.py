@@ -12,6 +12,7 @@ from flask import Flask, send_from_directory
 from flask_cors import CORS
 from src.models.computador import db  # Não precisa mais importar os modelos aqui
 from src.routes.computador import computador_bp
+from src.routes.auth import auth_bp, init_admin_user
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
@@ -20,6 +21,7 @@ app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
 CORS(app)
 
 app.register_blueprint(computador_bp, url_prefix='/api')
+app.register_blueprint(auth_bp, url_prefix='/api/auth')
 
 # Configuração do banco de dados a partir da variável de ambiente
 db_url = os.environ.get('DATABASE_URL')
@@ -64,7 +66,12 @@ def wait_for_db():
     print("Could not connect to the database after several retries.")
     sys.exit(1) # Sai se não conseguir conectar
 
+# Initialize database and admin user on startup
+wait_for_db()
+
+with app.app_context():
+    db.create_all()
+    init_admin_user()
+
 if __name__ == '__main__':
-    wait_for_db()
-    
     app.run(host='0.0.0.0', port=5000, debug=True)
