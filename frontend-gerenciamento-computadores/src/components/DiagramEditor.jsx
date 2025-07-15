@@ -10,7 +10,7 @@ import {
   Panel,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Monitor, Save, RotateCcw, Grid3x3 } from 'lucide-react';
+import { Monitor, Save, RotateCcw, Grid3x3, Type, Minus, Edit, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
@@ -36,8 +36,171 @@ const ComputerNode = ({ data }) => {
   );
 };
 
+// Componente customizado para texto personalizado
+const TextNode = ({ data, selected, onResizeStart, onResizeEnd }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [text, setText] = useState(data.text || 'Texto');
+
+  const handleDoubleClick = () => {
+    setIsEditing(true);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      setIsEditing(false);
+      data.text = text;
+      data.onUpdate?.(data);
+    }
+    if (e.key === 'Escape') {
+      setIsEditing(false);
+      setText(data.text || 'Texto');
+    }
+  };
+
+  const handleResizeStart = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    onResizeStart?.();
+    
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startWidth = data.width || 150;
+    const startHeight = data.height || 40;
+
+    const handleMouseMove = (e) => {
+      const deltaX = e.clientX - startX;
+      const deltaY = e.clientY - startY;
+      
+      const newWidth = Math.max(50, startWidth + deltaX);
+      const newHeight = Math.max(30, startHeight + deltaY);
+      
+      data.width = newWidth;
+      data.height = newHeight;
+      data.onUpdate?.(data);
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      onResizeEnd?.();
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  return (
+    <div 
+      className={`bg-transparent p-2 relative ${selected ? 'ring-2 ring-blue-500' : ''}`}
+      style={{
+        width: `${data.width || 150}px`,
+        height: `${data.height || 40}px`,
+        minWidth: '50px',
+        minHeight: '30px'
+      }}
+    >
+      {isEditing ? (
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={() => setIsEditing(false)}
+          className="bg-white border rounded px-2 py-1 text-sm w-full h-full resize-none"
+          autoFocus
+        />
+      ) : (
+        <div 
+          className="drag-handle text-sm font-medium bg-white px-2 py-1 rounded shadow-sm border w-full h-full overflow-hidden cursor-move"
+          onDoubleClick={handleDoubleClick}
+          style={{ 
+            fontSize: `${data.fontSize || 14}px`,
+            color: data.color || '#000000',
+            fontWeight: data.fontWeight || 'normal'
+          }}
+        >
+          {data.text || 'Texto'}
+        </div>
+      )}
+      
+      {/* Handle de redimensionamento */}
+      {selected && (
+        <div
+          className="absolute bottom-0 right-0 w-4 h-4 bg-blue-500 cursor-se-resize rounded-tl-lg opacity-80 hover:opacity-100 transition-opacity shadow-md border-2 border-white"
+          style={{ transform: 'translate(50%, 50%)' }}
+          onMouseDown={handleResizeStart}
+          title="Arrastar para redimensionar"
+        />
+      )}
+    </div>
+  );
+};
+
+// Componente customizado para linha de separação
+const LineNode = ({ data, selected, onResizeStart, onResizeEnd }) => {
+  const handleResizeStart = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    onResizeStart?.();
+    
+    const startX = e.clientX;
+    const startWidth = data.width || 200;
+
+    const handleMouseMove = (e) => {
+      const deltaX = e.clientX - startX;
+      const newWidth = Math.max(20, startWidth + deltaX);
+      
+      data.width = newWidth;
+      data.onUpdate?.(data);
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      onResizeEnd?.();
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  return (
+    <div 
+      className={`relative ${selected ? 'ring-2 ring-blue-500' : ''}`}
+      style={{
+        width: `${data.width || 200}px`,
+        height: '20px',
+        display: 'flex',
+        alignItems: 'center'
+      }}
+    >
+      <div
+        className="drag-handle flex-1 cursor-move"
+        style={{
+          borderTop: `${data.thickness || 2}px ${data.style || 'solid'} ${data.color || '#000000'}`,
+          height: '1px',
+          minHeight: '1px'
+        }}
+      />
+      
+      {/* Handle de redimensionamento */}
+      {selected && (
+        <div
+          className="absolute right-0 top-1/2 w-4 h-4 bg-blue-500 cursor-ew-resize rounded-full opacity-80 hover:opacity-100 transition-opacity shadow-md border-2 border-white"
+          style={{ transform: 'translate(50%, -50%)' }}
+          onMouseDown={handleResizeStart}
+          title="Arrastar para redimensionar largura"
+        />
+      )}
+    </div>
+  );
+};
+
 const nodeTypes = {
   computer: ComputerNode,
+  text: TextNode,
+  line: LineNode,
 };
 
 const DiagramEditor = ({ 
@@ -54,13 +217,18 @@ const DiagramEditor = ({
   const [showGrid, setShowGrid] = useState(true);
   const [gridType, setGridType] = useState('dots'); // 'dots' ou 'lines'
   const [isDragging, setIsDragging] = useState(false);
+  const [creationMode, setCreationMode] = useState(null); // null, 'text', 'line'
+  const [selectedNode, setSelectedNode] = useState(null);
+  const [isResizing, setIsResizing] = useState(false);
 
   // Converter computadores em nodes do React Flow
   useEffect(() => {
     if (!selectedGerencia || !computers) return;
 
     const layoutData = layouts[selectedGerencia] || {};
-    const newNodes = computers
+    
+    // Processar computadores
+    const computerNodes = computers
       .filter(computer => computer.gerencia_id === selectedGerencia)
       .map(computer => {
         // Verificar se há posição salva para este computador
@@ -96,7 +264,34 @@ const DiagramEditor = ({
         };
       });
 
-    setNodes(newNodes);
+    // Processar elementos personalizados (texto e linhas)
+    const customNodes = [];
+    Object.keys(layoutData).forEach(key => {
+      const item = layoutData[key];
+      if (item && typeof item === 'object' && item.type && (item.type === 'text' || item.type === 'line')) {
+        customNodes.push({
+          id: key,
+          type: item.type,
+          position: { x: item.x, y: item.y },
+          dragHandle: '.drag-handle',
+          data: {
+            ...item.data,
+            onUpdate: (updatedData) => {
+              // Callback para atualizar dados do node
+              setNodes(nodes => 
+                nodes.map(node => 
+                  node.id === key ? { ...node, data: updatedData } : node
+                )
+              );
+            },
+            onResizeStart: () => setIsResizing(true),
+            onResizeEnd: () => setIsResizing(false)
+          }
+        });
+      }
+    });
+
+    setNodes([...computerNodes, ...customNodes]);
   }, [selectedGerencia, computers, layouts]);
 
   // Callback para quando um node é movido
@@ -113,17 +308,104 @@ const DiagramEditor = ({
     onNodesChange(changes);
   }, [onNodesChange]);
 
+  // Função para criar novo elemento personalizado
+  const createCustomElement = useCallback((type, position) => {
+    const id = `custom_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    
+    const newNode = {
+      id,
+      type,
+      position,
+      dragHandle: '.drag-handle',
+      data: type === 'text' ? {
+        text: 'Novo texto',
+        fontSize: 14,
+        color: '#000000',
+        fontWeight: 'normal',
+        width: 150,
+        height: 40,
+        onUpdate: (updatedData) => {
+          setNodes(nodes => 
+            nodes.map(node => 
+              node.id === id ? { ...node, data: updatedData } : node
+            )
+          );
+        },
+        onResizeStart: () => setIsResizing(true),
+        onResizeEnd: () => setIsResizing(false)
+      } : {
+        width: 200,
+        color: '#000000',
+        style: 'solid',
+        thickness: 2,
+        onUpdate: (updatedData) => {
+          setNodes(nodes => 
+            nodes.map(node => 
+              node.id === id ? { ...node, data: updatedData } : node
+            )
+          );
+        },
+        onResizeStart: () => setIsResizing(true),
+        onResizeEnd: () => setIsResizing(false)
+      }
+    };
+
+    setNodes(nodes => [...nodes, newNode]);
+    setCreationMode(null);
+  }, [setNodes]);
+
+  // Função para deletar elemento selecionado
+  const deleteSelectedNode = useCallback(() => {
+    if (selectedNode) {
+      setNodes(nodes => nodes.filter(node => node.id !== selectedNode.id));
+      setSelectedNode(null);
+    }
+  }, [selectedNode, setNodes]);
+
+  // Callback para clique no canvas
+  const onPaneClick = useCallback((event) => {
+    if (creationMode) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      const position = {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top
+      };
+      createCustomElement(creationMode, position);
+    } else {
+      setSelectedNode(null);
+    }
+  }, [creationMode, createCustomElement]);
+
+  // Callback para seleção de node
+  const onNodeClick = useCallback((_, node) => {
+    setSelectedNode(node);
+  }, []);
+
   // Salvar layout
   const handleSaveLayout = useCallback(() => {
     const layoutData = {};
     nodes.forEach(node => {
-      layoutData[node.id] = {
-        x: node.position.x,
-        y: node.position.y
-      };
+      if (node.type === 'computer') {
+        // Para computadores, salvar apenas posição
+        layoutData[node.id] = {
+          x: node.position.x,
+          y: node.position.y
+        };
+      } else if (node.type === 'text' || node.type === 'line') {
+        // Para elementos personalizados, salvar posição e dados
+        layoutData[node.id] = {
+          type: node.type,
+          x: node.position.x,
+          y: node.position.y,
+          data: {
+            ...node.data,
+            onUpdate: undefined // Remover função do save
+          }
+        };
+      }
     });
     console.log('DiagramEditor: Salvando layout com dados:', layoutData);
-    console.log('DiagramEditor: Nodes atuais:', nodes.map(n => ({id: n.id, position: n.position})));
+    console.log('DiagramEditor: Nodes atuais:', nodes.map(n => ({id: n.id, type: n.type, position: n.position})));
     onSaveLayout(layoutData);
   }, [nodes, onSaveLayout]);
 
@@ -216,9 +498,12 @@ const DiagramEditor = ({
         onEdgesChange={onEdgesChange}
         onNodeDragStart={onNodeDragStart}
         onNodeDragStop={onNodeDragStop}
+        onPaneClick={onPaneClick}
+        onNodeClick={onNodeClick}
         nodeTypes={nodeTypes}
+        nodesDraggable={!isResizing}
         fitView
-        className="bg-gray-50"
+        className={`bg-gray-50 ${creationMode ? 'cursor-crosshair' : ''}`}
       >
         {showGrid && (
           <Background 
@@ -283,6 +568,183 @@ const DiagramEditor = ({
               Resetar
             </Button>
           </div>
+          
+          {/* Ferramentas de criação */}
+          <div className="border-t pt-2">
+            <div className="text-xs font-medium mb-2">Ferramentas:</div>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setCreationMode(creationMode === 'text' ? null : 'text')}
+                size="sm"
+                variant={creationMode === 'text' ? "default" : "outline"}
+                className="text-xs"
+              >
+                <Type className="h-3 w-3 mr-1" />
+                Texto
+              </Button>
+              
+              <Button
+                onClick={() => setCreationMode(creationMode === 'line' ? null : 'line')}
+                size="sm"
+                variant={creationMode === 'line' ? "default" : "outline"}
+                className="text-xs"
+              >
+                <Minus className="h-3 w-3 mr-1" />
+                Linha
+              </Button>
+            </div>
+            
+            {creationMode && (
+              <div className="text-xs text-gray-600 mt-1">
+                Clique no diagrama para criar {creationMode === 'text' ? 'texto' : 'linha'}
+              </div>
+            )}
+          </div>
+          
+          {/* Controles do elemento selecionado */}
+          {selectedNode && selectedNode.type !== 'computer' && (
+            <div className="border-t pt-2">
+              <div className="text-xs font-medium mb-2">Elemento selecionado:</div>
+              
+              {/* Controles para texto */}
+              {selectedNode.type === 'text' && (
+                <div className="space-y-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs">Largura:</label>
+                    <input
+                      type="number"
+                      min="50"
+                      max="500"
+                      value={selectedNode.data.width || 150}
+                      onChange={(e) => {
+                        const width = parseInt(e.target.value) || 150;
+                        selectedNode.data.width = width;
+                        selectedNode.data.onUpdate?.(selectedNode.data);
+                      }}
+                      className="text-xs border rounded px-1 w-16"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs">Altura:</label>
+                    <input
+                      type="number"
+                      min="30"
+                      max="300"
+                      value={selectedNode.data.height || 40}
+                      onChange={(e) => {
+                        const height = parseInt(e.target.value) || 40;
+                        selectedNode.data.height = height;
+                        selectedNode.data.onUpdate?.(selectedNode.data);
+                      }}
+                      className="text-xs border rounded px-1 w-16"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs">Fonte:</label>
+                    <input
+                      type="number"
+                      min="8"
+                      max="32"
+                      value={selectedNode.data.fontSize || 14}
+                      onChange={(e) => {
+                        const fontSize = parseInt(e.target.value) || 14;
+                        selectedNode.data.fontSize = fontSize;
+                        selectedNode.data.onUpdate?.(selectedNode.data);
+                      }}
+                      className="text-xs border rounded px-1 w-16"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs">Cor:</label>
+                    <input
+                      type="color"
+                      value={selectedNode.data.color || '#000000'}
+                      onChange={(e) => {
+                        selectedNode.data.color = e.target.value;
+                        selectedNode.data.onUpdate?.(selectedNode.data);
+                      }}
+                      className="w-8 h-6 border rounded"
+                    />
+                  </div>
+                </div>
+              )}
+              
+              {/* Controles para linha */}
+              {selectedNode.type === 'line' && (
+                <div className="space-y-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs">Largura:</label>
+                    <input
+                      type="number"
+                      min="20"
+                      max="800"
+                      value={selectedNode.data.width || 200}
+                      onChange={(e) => {
+                        const width = parseInt(e.target.value) || 200;
+                        selectedNode.data.width = width;
+                        selectedNode.data.onUpdate?.(selectedNode.data);
+                      }}
+                      className="text-xs border rounded px-1 w-16"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs">Espessura:</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={selectedNode.data.thickness || 2}
+                      onChange={(e) => {
+                        const thickness = parseInt(e.target.value) || 2;
+                        selectedNode.data.thickness = thickness;
+                        selectedNode.data.onUpdate?.(selectedNode.data);
+                      }}
+                      className="text-xs border rounded px-1 w-16"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs">Cor:</label>
+                    <input
+                      type="color"
+                      value={selectedNode.data.color || '#000000'}
+                      onChange={(e) => {
+                        selectedNode.data.color = e.target.value;
+                        selectedNode.data.onUpdate?.(selectedNode.data);
+                      }}
+                      className="w-8 h-6 border rounded"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs">Estilo:</label>
+                    <select
+                      value={selectedNode.data.style || 'solid'}
+                      onChange={(e) => {
+                        selectedNode.data.style = e.target.value;
+                        selectedNode.data.onUpdate?.(selectedNode.data);
+                      }}
+                      className="text-xs border rounded px-1"
+                    >
+                      <option value="solid">Sólida</option>
+                      <option value="dashed">Tracejada</option>
+                      <option value="dotted">Pontilhada</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex gap-2">
+                <Button
+                  onClick={deleteSelectedNode}
+                  size="sm"
+                  variant="destructive"
+                  className="text-xs"
+                >
+                  <Trash2 className="h-3 w-3 mr-1" />
+                  Deletar
+                </Button>
+              </div>
+            </div>
+          )}
           
           <div className="space-y-2">
             <div className="flex items-center gap-2">
