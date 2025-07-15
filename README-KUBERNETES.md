@@ -83,12 +83,12 @@ Para popular o banco de dados com dados iniciais, você precisará executar o sc
     ```
     Isso listará os pods com o label `app=backend`. Anote o nome completo do pod (ex: `backend-7dd6f9f984-d9jbb`).
 
-2.  **Executar o script `seed.py` dentro do Pod:**
+2.  **Executar o script `PSQL` dentro do Pod:**
     Substitua `<nome-do-pod-backend>` pelo nome que você obteve no passo anterior.
     ```bash
-    kubectl exec -it <nome-do-pod-backend> -n gen-computadores -- python /app/src/seed.py
+    kubectl exec -it <nome-do-pod-backend> -n gen-computadores -- psql "$DATABASE_URL" -f /app/database_schema.sql
     ```
-    Este comando executa o interpretador Python dentro do contêiner do pod e aponta para o script `seed.py` localizado em `/app/src/seed.py` (assumindo que o `WORKDIR` no Dockerfile do backend é `/app`).
+    Este comando executa o interpretador Python dentro do contêiner do pod e aponta para o script `PSQL` localizado em `` (assumindo que o `WORKDIR` no Dockerfile do backend é `/app`).
 
 
     ## INGRESS

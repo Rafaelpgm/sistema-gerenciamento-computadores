@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label.jsx'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.jsx'
 import { Checkbox } from '@/components/ui/checkbox.jsx'
 import { Badge } from '@/components/ui/badge.jsx'
-import { Computer, Building, Settings, Plus, Edit, Trash2, Monitor } from 'lucide-react'
+import { Computer, Building, Settings, Plus, Edit, Trash2, Monitor, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import './App.css'
 
       
@@ -17,7 +17,7 @@ import './App.css'
 // const API_BASE_URL = 'http://localhost:5000/api'
 
 // Depois:
-const API_BASE_URL = 'http://191.232.244.118:5170/api'
+const API_BASE_URL = 'http://191.234.192.208:5170/api'
 
     
 
@@ -40,6 +40,12 @@ function App() {
     ram: '',
     so: 'all',
     ssd: 'all',
+  })
+
+  // Estado para ordenação
+  const [sortConfig, setSortConfig] = useState({
+    key: null,
+    direction: 'asc'
   })
 
   // Estados para formulários
@@ -95,14 +101,46 @@ function App() {
     return Array.from(osSet).sort((a, b) => b - a); // Ordena do mais novo para o mais antigo
   }, [patrimonios]);
 
+  // Componente auxiliar para cabeçalhos ordenáveis
+  const SortableHeader = ({ column, children }) => {
+    const getSortIcon = () => {
+      if (sortConfig.key !== column) {
+        return <ArrowUpDown className="ml-2 h-4 w-4" />
+      }
+      return sortConfig.direction === 'asc' ? 
+        <ArrowUp className="ml-2 h-4 w-4" /> : 
+        <ArrowDown className="ml-2 h-4 w-4" />
+    }
+
+    return (
+      <div 
+        className="flex items-center cursor-pointer select-none hover:text-gray-900"
+        onClick={() => handleSort(column)}
+      >
+        {children}
+        {getSortIcon()}
+      </div>
+    )
+  }
+
     // 3. Função para atualizar o estado dos filtros
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }))
   }
 
-  // 4. Lógica para filtrar os patrimônios
+  // Função para lidar com a ordenação
+  const handleSort = (key) => {
+    let direction = 'asc'
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc'
+    }
+    setSortConfig({ key, direction })
+  }
+
+  // 4. Lógica para filtrar e ordenar os patrimônios
   const filteredPatrimonios = useMemo(() => {
-    return patrimonios.filter(p => {
+    // Primeiro filtra
+    let filtered = patrimonios.filter(p => {
       const patrimonioMatch = p.patrimonio.toLowerCase().includes(filters.patrimonio.toLowerCase())
       const responsavelMatch = p.nome_servidor_responsavel.toLowerCase().includes(filters.responsavel.toLowerCase())
       const gerenciaMatch = filters.gerencia === 'all' || p.gerencia_id.toString() === filters.gerencia
@@ -121,7 +159,47 @@ function App() {
 
       return patrimonioMatch && responsavelMatch && gerenciaMatch && modeloMatch && processadorMatch && ramMatch && soMatch && ssdMatch
     })
-  }, [patrimonios, filters])
+
+    // Depois ordena
+    if (sortConfig.key) {
+      filtered.sort((a, b) => {
+        let aValue = a[sortConfig.key]
+        let bValue = b[sortConfig.key]
+
+        // Lidar com valores aninhados
+        if (sortConfig.key === 'gerencia') {
+          aValue = a.gerencia?.nome || ''
+          bValue = b.gerencia?.nome || ''
+        } else if (sortConfig.key === 'modelo') {
+          aValue = a.modelo?.nome || ''
+          bValue = b.modelo?.nome || ''
+        } else if (sortConfig.key === 'processador') {
+          aValue = a.modelo?.processador || ''
+          bValue = b.modelo?.processador || ''
+        } else if (sortConfig.key === 'ram') {
+          aValue = `${a.modelo?.quantidade_ram} ${a.modelo?.tipo_ram}` || ''
+          bValue = `${b.modelo?.quantidade_ram} ${b.modelo?.tipo_ram}` || ''
+        } else if (sortConfig.key === 'so') {
+          aValue = a.modelo?.sistema_operacional || ''
+          bValue = b.modelo?.sistema_operacional || ''
+        } else if (sortConfig.key === 'ssd') {
+          aValue = a.modelo?.ssd ? 1 : 0
+          bValue = b.modelo?.ssd ? 1 : 0
+        }
+
+        // Comparação
+        if (aValue < bValue) {
+          return sortConfig.direction === 'asc' ? -1 : 1
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'asc' ? 1 : -1
+        }
+        return 0
+      })
+    }
+
+    return filtered
+  }, [patrimonios, filters, sortConfig])
 
   const openDialog = (type, item = null) => {
     setDialogType(type)
@@ -208,7 +286,34 @@ function App() {
       })
 
       if (response.ok) {
-        await fetchData()
+        const updatedItem = await response.json()
+        
+        if (dialogType === 'patrimonio') {
+          if (editingItem) {
+            setPatrimonios(prev => prev.map(item => 
+              item.id === editingItem.id ? updatedItem : item
+            ))
+          } else {
+            setPatrimonios(prev => [...prev, updatedItem])
+          }
+        } else if (dialogType === 'modelo') {
+          if (editingItem) {
+            setModelos(prev => prev.map(item => 
+              item.id === editingItem.id ? updatedItem : item
+            ))
+          } else {
+            setModelos(prev => [...prev, updatedItem])
+          }
+        } else if (dialogType === 'gerencia') {
+          if (editingItem) {
+            setGerencias(prev => prev.map(item => 
+              item.id === editingItem.id ? updatedItem : item
+            ))
+          } else {
+            setGerencias(prev => [...prev, updatedItem])
+          }
+        }
+        
         closeDialog()
       }
     } catch (error) {
@@ -224,7 +329,13 @@ function App() {
         })
 
         if (response.ok) {
-          await fetchData()
+          if (type === 'patrimonio') {
+            setPatrimonios(prev => prev.filter(item => item.id !== id))
+          } else if (type === 'modelo') {
+            setModelos(prev => prev.filter(item => item.id !== id))
+          } else if (type === 'gerencia') {
+            setGerencias(prev => prev.filter(item => item.id !== id))
+          }
         }
       } catch (error) {
         console.error('Erro ao excluir:', error)
@@ -276,7 +387,6 @@ function App() {
                 <div className="flex justify-between items-center">
                   <div>
                     <CardTitle>Patrimônios</CardTitle>
-                    {/* 5. Contador dinâmico */}
                     <CardDescription>
                       Exibindo {filteredPatrimonios.length} de {patrimonios.length} computadores.
                     </CardDescription>
@@ -291,17 +401,16 @@ function App() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Patrimônio</TableHead>
-                      <TableHead>Responsável</TableHead>
-                      <TableHead>Gerência</TableHead>
-                      <TableHead>Modelo</TableHead>
-                      <TableHead>Processador</TableHead>
-                      <TableHead>RAM</TableHead>
-                      <TableHead>SO</TableHead>
-                      <TableHead>SSD</TableHead>
+                      <TableHead><SortableHeader column="patrimonio">Patrimônio</SortableHeader></TableHead>
+                      <TableHead><SortableHeader column="nome_servidor_responsavel">Responsável</SortableHeader></TableHead>
+                      <TableHead><SortableHeader column="gerencia">Gerência</SortableHeader></TableHead>
+                      <TableHead><SortableHeader column="modelo">Modelo</SortableHeader></TableHead>
+                      <TableHead><SortableHeader column="processador">Processador</SortableHeader></TableHead>
+                      <TableHead><SortableHeader column="ram">RAM</SortableHeader></TableHead>
+                      <TableHead><SortableHeader column="so">SO</SortableHeader></TableHead>
+                      <TableHead><SortableHeader column="ssd">SSD</SortableHeader></TableHead>
                       <TableHead>Ações</TableHead>
                     </TableRow>
-                       {/* 6. Linha com os filtros */}
                     <TableRow>
                       <TableHead><Input placeholder="Filtrar..." value={filters.patrimonio} onChange={(e) => handleFilterChange('patrimonio', e.target.value)} /></TableHead>
                       <TableHead><Input placeholder="Filtrar..." value={filters.responsavel} onChange={(e) => handleFilterChange('responsavel', e.target.value)} /></TableHead>
@@ -346,11 +455,10 @@ function App() {
                           </SelectContent>
                         </Select>
                       </TableHead>
-                      <TableHead></TableHead> {/* Célula vazia para coluna de ações */}
+                      <TableHead></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {/* 7. Mapear a lista filtrada */}
                     {filteredPatrimonios.map((patrimonio) => (
                       <TableRow key={patrimonio.id}>
                         <TableCell className="font-medium">{patrimonio.patrimonio}</TableCell>
@@ -411,7 +519,7 @@ function App() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Nome</TableHead> {/* <-- NOVO CABEÇALHO */}
+                      <TableHead>Nome</TableHead>
                       <TableHead>Processador</TableHead>
                       <TableHead>Quantidade RAM</TableHead>
                       <TableHead>Tipo RAM</TableHead>

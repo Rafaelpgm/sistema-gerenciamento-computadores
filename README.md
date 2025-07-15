@@ -57,5 +57,5 @@ Este sistema foi desenvolvido para gerenciar o patrimônio de computadores da em
 ## Comando sem build
 3) docker-compose up -d
 ## Popular o Banco (Somente primeira vez)
-4) docker-compose exec backend python src/seed.py 
+4) psql "$DATABASE_URL" -f /app/database_schema.sql
 
