@@ -15,11 +15,7 @@ import Login from '@/components/Login.jsx'
 import './App.css'
 
       
-// Antes:
-// const API_BASE_URL = 'http://localhost:5000/api'
-
-// Depois:
-const API_BASE_URL = 'http://191.234.192.208:5170/api'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'
 
 // Função para formatar o número de patrimônio
 const formatPatrimonio = (patrimonio) => {
