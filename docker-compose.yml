@@ -5,6 +5,7 @@ services:
   db:
     image: postgres:15-alpine  # Usamos uma imagem oficial e leve do Postgres
     container_name: postgres_db
+    restart: unless-stopped
     environment:
       # Essas variáveis são usadas pela imagem do Postgres para inicializar o banco
       POSTGRES_USER: postgres
@@ -20,6 +21,7 @@ services:
   # Serviço do Backend
   backend:
     container_name: sgc-backend
+    restart: unless-stopped
     build:
       context: ./backend-gerenciamento-computadores
     ports:
@@ -38,6 +40,7 @@ services:
   # Serviço do Frontend (sem alterações)
   frontend:
     container_name: sgc-frontend
+    restart: unless-stopped
     build:
       context: ./frontend-gerenciamento-computadores
     ports:
